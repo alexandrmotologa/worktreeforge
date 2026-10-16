@@ -1,0 +1,42 @@
+# WorktreeForge default configuration
+version: 1
+
+# Pattern for creating new worktree directories
+# Supported placeholders: {repo}, {branch}, {branch_slug}
+worktrees_dir: "../{repo}-{branch_slug}"
+
+port_multiplexer:
+  enabled: true
+  start_offset: 1
+  port_range_min: 3000
+  port_range_max: 9999
+  scan_env_files:
+    - ".env"
+    - ".env.example"
+    - ".env.local"
+  scan_package_json: true
+  port_variables:
+    - "PORT"
+    - "VITE_PORT"
+    - "NEXT_PUBLIC_PORT"
+    - "SERVER_PORT"
+    - "API_PORT"
+    - "CLIENT_PORT"
+    - "APP_PORT"
+    - "FASTAPI_PORT"
+    - "UVICORN_PORT"
+    - "WEB_PORT"
+  output_env_file: ".env.local"
+
+pruner:
+  require_clean_git: true
+  check_github_pr: true
+  delete_branch_on_prune: false
+  protect_locked: true
+
+editor:
+  command: ""  # e.g., "code", "cursor", or leave empty for auto-detect
+
+hooks:
+  post_create: []
+  pre_remove: []

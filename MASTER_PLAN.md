@@ -1,26 +1,12 @@
 # WorktreeForge: Master Implementation Plan
 
-> **High-Speed Git Worktree Supervisor, Stash Studio & Local Port Multiplexer**
+> High-Speed Git Worktree Supervisor, Stash Studio & Local Port Multiplexer
 >
-> *Supercharge parallel Git workflows without branch-switching friction. Instant worktree provisioning, automated local dev server port offset multiplexing (`PORT=3000`, `PORT=3001`), interactive stash visualizer, and automated merged-PR worktree cleanup.*
+> Eliminates friction when developing in parallel with Git Worktrees and AI assistants. Automatically allocates non-conflicting dev server ports (`PORT=3000`, `PORT=3001`...) via `.env.local`, provides an interactive Stash Studio, and enables safe cleanup of worktrees when associated GitHub pull requests are merged.
 
 ---
 
-## 1. Project Overview & Architecture
-
-Git Worktrees are one of Git's most potent features: they allow checking out multiple branches simultaneously into isolated directory trees. Developers can work on a new feature in one directory while fixing an urgent bug in another—without stashing, switching branches, or re-running slow `npm install` steps.
-
-However, standard Git Worktrees suffer from major friction points:
-1. **Port Collisions**: Running dev servers (e.g. Next.js, Vite, FastAPI) in two worktrees simultaneously fails with `Error: EADDRINUSE: address already in use :::3000`.
-2. **Cumbersome CLI Syntax**: Creating, switching, and pruning worktrees requires verbose commands (`git worktree add -b feature-x ../repo-feature-x origin/main`).
-3. **Orphaned Directories**: Merged branches leave abandoned directories that waste disk space and clutter `.git/worktrees/`.
-4. **Stash Amnesia**: Git stashes are invisible stacks where uncommitted experiments get forgotten.
-
-**WorktreeForge** transforms worktree operations into a seamless developer experience:
-- **Instant Worktree Provisioning**: 1-command or 1-click worktree creation with automated branch checkout and symlink preservation.
-- **Port Multiplexing Engine**: Automatically discovers port declarations in `.env`, `package.json`, or `docker-compose.yml` and assigns deterministic, collision-free port offsets (e.g. Base: 3000, Worktree 1: 3001, Worktree 2: 3002).
-- **Interactive Stash Studio**: Searchable TUI & Web dashboard displaying diffs for all stashes with hunk-level cherry-picking.
-- **GitHub PR Synchronization & Auto-Prune**: Connects with GitHub CLI (`gh`) to automatically detect when a PR is merged and safely cleans up the worktree.
+## 1. System Architecture
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -31,9 +17,10 @@ However, standard Git Worktrees suffer from major friction points:
         |                                                                   |
 +-------v-------------------------+                 +-----------------------v-------+
 |    Worktree Lifecycle Manager   |                 |    Local Port Multiplexer     |
-|  * Fast Multi-Branch Checkout   |                 |  * .env Auto-Configuration    |
+|  * Fast Multi-Branch Checkout   |                 |  * .env / package.json Scan   |
 |  * Directory Isolation          |                 |  * Dynamic Port Offsets       |
-|  * Submodule & Dependency Link  |                 |  * Prevents EADDRINUSE Conflicts|
+|  * Safe Dirty State Detection   |                 |  * Real TCP Socket Probing    |
+|  * Lock / Unlock Protection     |                 |  * .worktreeforge.ports.json  |
 +-------+-------------------------+                 +-----------------------+-------+
         |                                                                   |
         +---------------------------------+---------------------------------+
@@ -41,128 +28,181 @@ However, standard Git Worktrees suffer from major friction points:
                         +-----------------v-----------------+
                         |       Visual Stash Studio         |
                         |  * Searchable Stash Hierarchy     |
-                        |  * Hunk-Level Diff Viewer         |
-                        |  * 1-Click Selective Pop / Apply  |
+                        |  * Unified & Per-File Diff Viewer |
+                        |  * Apply, Pop, Drop, Branch-Out   |
                         +-----------------+-----------------+
                                           |
                         +-----------------v-----------------+
                         |    GitHub PR Sync & Auto-Prune    |
-                        |  * Merged PR Detection via `gh`   |
+                        |  * Merged PR Detection via gh CLI |
                         |  * Safe Unlink & Disk Reclamation |
-                        |  * Interactive TUI & Web UI       |
+                        |  * Interactive TUI & Web Studio   |
                         +-----------------------------------+
 ```
 
 ---
 
-## 2. Directory Structure
+## 2. Directory Layout
 
 ```
 worktreeforge/
 ├── pyproject.toml
+├── requirements.txt
 ├── README.md
 ├── LICENSE
 ├── configs/
-│   └── worktreeforge.default.yaml    # Port allocation ranges, base directories
+│   └── worktreeforge.default.yaml    # Port allocation ranges, base directories, hooks
 ├── docs/
 │   ├── architecture.md
 │   ├── cli-reference.md
-│   └── worktree-workflows.md
+│   ├── worktree-workflows.md
+│   └── images/
+│       ├── worktreeforge_preview.png
+│       └── worktreeforge_demo.gif
 ├── src/
 │   └── worktreeforge/
 │       ├── __init__.py
 │       ├── py.typed
-│       ├── cli/
-│       │   ├── __init__.py
-│       │   └── main.py
 │       ├── core/
 │       │   ├── __init__.py
 │       │   ├── config.py             # User preferences & workspace settings
-│       │   ├── git_client.py         # Subprocess Git CLI wrapper (worktree, stash, branch)
-│       │   ├── models.py             # WorktreeInfo, StashInfo, PortMapping
-│       │   └── pruner.py             # Safe directory cleanup and git worktree prune
+│       │   ├── git_client.py         # Native Git CLI subprocess wrapper
+│       │   ├── models.py             # Pydantic schemas (WorktreeInfo, StashInfo, PortMapping)
+│       │   └── supervisor.py         # Worktree lifecycle coordinator & dirty state guard
 │       ├── multiplexer/
 │       │   ├── __init__.py
-│       │   ├── port_allocator.py     # Port reservation table & socket availability check
-│       │   └── env_patcher.py        # Updates .env, .env.local with allocated ports
+│       │   ├── port_allocator.py     # Port reservation table & socket availability prober
+│       │   ├── env_patcher.py        # Updates .env, .env.local with allocated ports
+│       │   └── port_scanner.py       # Scans .env, package.json, docker-compose, configs
 │       ├── stash/
 │       │   ├── __init__.py
-│       │   └── inspector.py          # Parses git stash list and unified diffs
+│       │   └── inspector.py          # Parses git stash list, commits, unified diffs & search
 │       ├── github/
 │       │   ├── __init__.py
-│       │   └── pr_checker.py         # Interrogates `gh pr status` for merged branches
+│       │   └── pr_checker.py         # Interrogates `gh pr view` for merged/closed branches
 │       ├── tui/
 │       │   ├── __init__.py
 │       │   └── app.py                # Textual interactive terminal dashboard
-│       └── web/
+│       ├── web/
+│       │   ├── __init__.py
+│       │   ├── server.py             # FastAPI backend with REST endpoints & WebSockets
+│       │   └── static/
+│       │       ├── index.html        # Modern responsive dark-mode dashboard
+│       │       ├── app.js            # Real-time state synchronization & actions
+│       │       └── style.css         # Clean engineering design system
+│       └── cli/
 │           ├── __init__.py
-│           ├── server.py             # FastAPI backend with WebSocket file watchers
-│           └── static/               # Worktree switcher canvas with live port badges
+│           └── main.py               # Typer CLI with rich output formatting
 └── tests/
+    ├── __init__.py
+    ├── conftest.py
     ├── test_git_client.py
+    ├── test_supervisor.py
+    ├── test_port_scanner.py
     ├── test_port_allocator.py
     ├── test_env_patcher.py
     ├── test_stash_inspector.py
-    └── test_cli.py
+    ├── test_github_pr_checker.py
+    ├── test_cli.py
+    └── test_web_server.py
 ```
 
 ---
 
-## 3. Step-by-Step Implementation Roadmap
+## 3. Detailed Step-by-Step Task Breakdown
 
-### Phase 1: Git Worktree Engine & Domain Models (`src/worktreeforge/core/`)
-- Wrap Git native CLI commands:
-  - `git worktree list --porcelain`: Parses path, HEAD commit, branch reference, locked state.
-  - `git worktree add <path> <branch>`: Provisions new working tree with branch checkout.
-  - `git worktree remove <path>` and `git worktree prune`.
-- Handle dirty state validation: Prevents accidental deletion of uncommitted changes.
+### Task 1: Domain Models & Configuration Engine
+- [x] Subtask 1.1: Define Pydantic models in `src/worktreeforge/core/models.py`:
+  - `WorktreeInfo`: path, commit_hash, branch, is_bare, is_locked, lock_reason, is_main, is_dirty, active_ports, pr_status.
+  - `PortAllocation`: worktree_path, branch, port_variable, base_port, allocated_port, is_active.
+  - `PortRegistry`: table of active allocations saved to `.worktreeforge.ports.json`.
+  - `StashEntry`: index, id, hash, message, branch, date, author, files_changed, insertions, deletions.
+  - `StashDiff`: stash_index, raw_diff, per_file_diffs.
+  - `PRStatus`: state (`OPEN`, `MERGED`, `CLOSED`, `NONE`), number, url, title, merged_at.
+- [x] Subtask 1.2: Implement `src/worktreeforge/core/config.py` loading YAML configuration hierarchy (defaults -> `~/.config/worktreeforge/config.yaml` -> `.worktreeforge.yaml`).
 
-### Phase 2: Dynamic Port Multiplexer (`src/worktreeforge/multiplexer/`)
-- Scan target repository for declared ports:
-  - RegEx inspection of `.env`, `.env.example`, `.env.local`: `PORT=3000`, `SERVER_PORT=8000`.
-  - JSON inspection of `package.json` scripts: `"dev": "next dev -p 3000"`.
-- Assign sequential port slots:
-  - Base Worktree: Port `3000`
-  - Worktree 1 (`feature-auth`): Port `3001`
-  - Worktree 2 (`bugfix-payments`): Port `3002`
-- Verify socket availability before assignment (`socket.create_server()`).
-- Auto-generate `.env.local` inside the newly created worktree directory with overridden ports.
+### Task 2: Git Native Subprocess Client
+- [x] Subtask 2.1: Implement `src/worktreeforge/core/git_client.py`:
+  - Execute `git` subprocesses with UTF-8 decoding and error handling.
+  - `get_repo_root()`: detect repo root or raise informative error.
+  - `list_worktrees()`: parse `git worktree list --porcelain` into `WorktreeInfo` records.
+  - `add_worktree(path, branch, base_ref=None, new_branch=True)`: execute `git worktree add`.
+  - `remove_worktree(path, force=False)`: execute `git worktree remove`.
+  - `lock_worktree(path, reason=None)` and `unlock_worktree(path)`: execute `git worktree lock/unlock`.
+  - `prune_worktrees()`: execute `git worktree prune`.
+  - `check_dirty(path)`: run `git status --porcelain` to detect uncommitted/untracked changes.
+  - `list_stashes()`: execute `git stash list` with format parsing.
+  - `get_stash_diff(index)`: execute `git stash show -p stash@{index}`.
+  - `apply_stash(index)`, `pop_stash(index)`, `drop_stash(index)`.
 
-### Phase 3: Interactive Stash Studio (`src/worktreeforge/stash/`)
-- Parse `git stash list` with commit hashes, relative creation timestamps, and branch origin.
-- Parse `git stash show -p stash@{n}` to generate syntax-highlighted diffs per file.
-- Support operations:
-  - `worktreeforge stash search <keyword>`
-  - `worktreeforge stash apply <index> [--drop]`
+### Task 3: Port Multiplexing Engine
+- [x] Subtask 3.1: Implement `src/worktreeforge/multiplexer/port_scanner.py`:
+  - Scan `.env`, `.env.example`, `.env.local` for port variables (`PORT=...`, `SERVER_PORT=...`, `VITE_PORT=...`, etc.).
+  - Scan `package.json` scripts for port arguments (e.g., `-p 3000`, `--port 3000`).
+  - Scan `docker-compose.yml` or `pyproject.toml` for standard port definitions.
+- [x] Subtask 3.2: Implement `src/worktreeforge/multiplexer/port_allocator.py`:
+  - Socket verification: test candidate ports via TCP socket bind (`socket.socket(socket.AF_INET, socket.SOCK_STREAM)`).
+  - Deterministic offset calculation based on worktree order or registry history.
+  - Maintain `.worktreeforge.ports.json` in repository root for persistent allocation tracking.
+  - Release allocations when a worktree is removed.
+- [x] Subtask 3.3: Implement `src/worktreeforge/multiplexer/env_patcher.py`:
+  - Write or update `.env.local` inside the worktree directory.
+  - Maintain comments and existing overrides while injecting new allocated ports.
 
-### Phase 4: GitHub PR Auto-Pruner (`src/worktreeforge/github/`)
-- Query GitHub CLI: `gh pr view <branch> --json state,mergedAt`.
-- If the PR is merged:
-  - Mark worktree with `[MERGED]` badge in CLI/TUI.
-  - Provide 1-command cleanup: `worktreeforge prune --merged` which safely deletes the folder and runs `git worktree prune`.
+### Task 4: Stash Studio Engine
+- [x] Subtask 4.1: Implement `src/worktreeforge/stash/inspector.py`:
+  - Parse commit hashes, dates, branches, and messages from `git stash list`.
+  - Parse unified diffs into structured file-by-file objects with added/deleted line statistics.
+  - Search engine across stash summaries, touched file paths, and diff hunks.
+  - Integration with Git client for applying, popping, and dropping stashes.
 
-### Phase 5: CLI Suite & Dual Dashboards
-- CLI commands:
-  - `worktreeforge new <branch-name>`: Interactively creates worktree, sets ports, and opens in editor.
-  - `worktreeforge list`: Formatted table showing path, branch, active ports, and git status.
-  - `worktreeforge tui`: Interactive Textual console for switching worktrees with arrow keys.
-  - `worktreeforge web --port 8990`: Visual dashboard with 1-click terminal and editor launchers.
+### Task 5: GitHub PR Synchronization & Safe Pruning
+- [x] Subtask 5.1: Implement `src/worktreeforge/github/pr_checker.py`:
+  - Interrogate GitHub CLI `gh pr view <branch> --json state,number,url,title,mergedAt`.
+  - Graceful fallback when `gh` CLI is absent or repository has no GitHub remote.
+  - Cache results with a short TTL to prevent redundant API queries.
+- [x] Subtask 5.2: Implement `src/worktreeforge/core/supervisor.py`:
+  - Orchestrate worktree creation: path calculation, branch creation, git worktree add, port allocation, .env.local patching, post-create hooks.
+  - Orchestrate safe pruning: query PR statuses, identify merged worktrees, verify dirty state, remove worktrees, release ports, prune git metadata.
 
----
+### Task 6: Rich CLI Suite (`worktreeforge.cli.main`)
+- [x] Subtask 6.1: Implement `worktreeforge list`: Rich table with branch, path, lock status, allocated ports, and PR state.
+- [x] Subtask 6.2: Implement `worktreeforge new <branch>`: Interactive creation with flags `--base`, `--path`, `--port-offset`, `--no-ports`, `--open`.
+- [x] Subtask 6.3: Implement `worktreeforge remove <name_or_path>`: Safety verification and force option.
+- [x] Subtask 6.4: Implement `worktreeforge lock` and `worktreeforge unlock`.
+- [x] Subtask 6.5: Implement `worktreeforge ports`: Show active port mappings and live TCP socket checks.
+- [x] Subtask 6.6: Implement `worktreeforge stash` subcommands: `list`, `show`, `search`, `apply`, `pop`, `drop`.
+- [x] Subtask 6.7: Implement `worktreeforge prune`: Handle `--merged` and `--dry-run`.
+- [x] Subtask 6.8: Implement `worktreeforge tui` launcher and `worktreeforge web` launcher.
 
-## 4. Agent Kickoff Prompt (Copy-Paste Ready)
+### Task 7: Interactive Terminal Dashboard (TUI)
+- [x] Subtask 7.1: Implement `src/worktreeforge/tui/app.py` using Textual:
+  - Worktree data table with real-time status.
+  - Action keys: `[n]` New worktree, `[d]` Delete worktree, `[l]` Lock/Unlock, `[s]` Stash viewer, `[p]` Prune merged, `[r]` Refresh, `[q]` Quit.
+  - Interactive Stash modal with file selection and syntax-highlighted diff display.
 
-```markdown
-You are building WorktreeForge from scratch.
+### Task 8: Web Studio Dashboard (FastAPI + Modern Web UI)
+- [x] Subtask 8.1: Implement `src/worktreeforge/web/server.py`:
+  - REST endpoints for listing, creating, removing, locking, and pruning worktrees.
+  - REST endpoints for listing, viewing diffs, searching, and applying stashes.
+  - REST endpoints for port mapping and socket verification.
+  - WebSocket endpoint `/ws` broadcasting filesystem changes and repo events in real time.
+- [x] Subtask 8.2: Implement frontend (`index.html`, `style.css`, `app.js`):
+  - Dark-mode developer interface.
+  - Worktree cards with live port badges, PR status pills, lock toggles, and direct terminal/editor launcher buttons.
+  - Embedded Stash Studio with file tree, diff viewer, and instant search.
+  - Port multiplexer status panel with live listening indicators.
 
-WorktreeForge is a high-speed Git worktree supervisor, stash studio, and local port multiplexer.
-It automates parallel Git branch checkouts, prevents EADDRINUSE port conflicts by injecting sequential port offsets into .env files, and provides an interactive TUI for switching worktrees.
+### Task 9: Comprehensive Automated Test Suite
+- [x] Subtask 9.1: Git client tests with temporary git repositories (`test_git_client.py`).
+- [x] Subtask 9.2: Port scanner and socket verifier tests (`test_port_scanner.py`, `test_port_allocator.py`).
+- [x] Subtask 9.3: Environment patcher tests (`test_env_patcher.py`).
+- [x] Subtask 9.4: Stash inspector and diff parser tests (`test_stash_inspector.py`).
+- [x] Subtask 9.5: Supervisor and PR checker tests (`test_supervisor.py`, `test_github_pr_checker.py`).
+- [x] Subtask 9.6: CLI commands test suite (`test_cli.py`).
+- [x] Subtask 9.7: Web API test suite with FastAPI TestClient (`test_web_server.py`).
 
-Follow these rules:
-1. All code, comments, commit messages, and docs must be in English.
-2. Zero mocks or placeholder implementations. Write authentic Git CLI subprocess interactions, socket port checks, and .env parser/patcher.
-3. Keep test coverage high with pytest.
-4. Provide a rich CLI with Typer and an interactive Web Studio with FastAPI.
-
-Begin by setting up the repository in `B:\workgit\worktreeforge`, initialize git, write the core schemas in `src/worktreeforge/core/models.py`, and implement the Git worktree wrapper and port allocator.
-```
+### Task 10: Visual Assets Generation & Portfolio Live Sync (Phase 2)
+- [x] Subtask 10.1: Generate authentic high-resolution UI preview (`docs/images/worktreeforge_preview.png`).
+- [x] Subtask 10.2: Generate animated demo GIF (`docs/images/worktreeforge_demo.gif`).
+- [x] Subtask 10.3: Execute MTLG Portfolio Sync Phase 2: migrate assets to `mtlg-site` and `mtlglabs-space`, update `projects.json` to LIVE, run sync scripts, commit/push, and broadcast to X.

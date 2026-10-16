@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import time
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from worktreeforge.core.models import PRState, PRStatus
 
@@ -91,3 +91,43 @@ class GitHubPRChecker:
             )
         except Exception:
             return PRStatus(state=PRState.NONE)
+
+    def create_pr(
+        self,
+        branch: str,
+        title: Optional[str] = None,
+        body: Optional[str] = None,
+        draft: bool = False,
+        cwd: Optional[Path] = None,
+    ) -> Dict[str, Any]:
+        """Create a new pull request on GitHub via gh CLI."""
+        if not self.is_gh_available():
+            return {"success": False, "error": "GitHub CLI (gh) is not installed on PATH"}
+
+        cmd = ["gh", "pr", "create", "--head", branch]
+        if title:
+            cmd.extend(["--title", title])
+            cmd.extend(["--body", body or ""])
+        else:
+            cmd.append("--fill")
+
+        if draft:
+            cmd.append("--draft")
+
+        try:
+            res = subprocess.run(
+                cmd,
+                cwd=str(cwd) if cwd else None,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=30,
+            )
+            if res.returncode == 0:
+                pr_url = res.stdout.strip()
+                return {"success": True, "url": pr_url}
+            else:
+                return {"success": False, "error": res.stderr.strip() or "Failed to create PR"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}

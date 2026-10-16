@@ -10,6 +10,8 @@ let state = {
   selectedStashIndex: null,
   activeTab: "worktrees",
   viewMode: "cards",
+  logInterval: null,
+  activeLogWorktree: null,
 };
 
 let ws = null;
@@ -40,6 +42,10 @@ function setupNavigation() {
         `tab${target.charAt(0).toUpperCase() + target.slice(1)}`
       );
       if (activeContent) activeContent.classList.add("active");
+
+      if (target === "compare") {
+        populateCompareDropdown();
+      }
     });
   });
 
@@ -93,6 +99,14 @@ function setupEventListeners() {
   document.getElementById("btnDropStash").addEventListener("click", () => {
     if (state.selectedStashIndex !== null) dropStash(state.selectedStashIndex);
   });
+
+  // Compare refresh
+  document.getElementById("btnRefreshCompare").addEventListener("click", runBranchComparison);
+  document.getElementById("compareTargetSelect").addEventListener("change", runBranchComparison);
+
+  // Logs modal
+  document.getElementById("logsModalCloseBtn").addEventListener("click", closeLogsModal);
+  document.getElementById("logsModalCloseAction").addEventListener("click", closeLogsModal);
 }
 
 // WebSocket Connection
@@ -148,6 +162,7 @@ async function fetchAllData() {
     renderWorktrees();
     renderStashList();
     renderPortsTable();
+    populateCompareDropdown();
   } catch (error) {
     showToast(`Error fetching data: ${error.message}`, "error");
   }
@@ -170,7 +185,7 @@ function renderWorktrees(filterQuery = "") {
 
   if (filtered.length === 0) {
     grid.innerHTML = `<div class="empty-state">No matching worktrees found.</div>`;
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center">No matching worktrees.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center">No matching worktrees.</td></tr>`;
     return;
   }
 
@@ -200,6 +215,13 @@ function renderWorktrees(filterQuery = "") {
       }
     }
 
+    // Process status
+    let serverBadge = "";
+    const isRunning = wt.process && wt.process.status === "RUNNING";
+    if (isRunning) {
+      serverBadge = `<span class="badge badge-server-running">DEV PID ${wt.process.pid}</span>`;
+    }
+
     // Ports
     const portsList = Object.entries(wt.active_ports || {});
     let portsHtml = "";
@@ -207,7 +229,7 @@ function renderWorktrees(filterQuery = "") {
       portsHtml = portsList
         .map(
           ([k, v]) =>
-            `<span class="port-pill"><span class="port-dot"></span>${k}: <strong>${v}</strong></span>`
+            `<a class="port-pill" onclick="openBrowserForPath('${escapeJsStr(wt.path)}')"><span class="port-dot ${wt.http_ready ? "pulse" : ""}"></span>${k}: <strong>${v}</strong></a>`
         )
         .join("");
     } else {
@@ -223,7 +245,7 @@ function renderWorktrees(filterQuery = "") {
             <span class="wt-branch-name">${escapeHtml(wt.branch)} ${wt.is_main ? '<span class="text-muted text-xs">(main)</span>' : ""}</span>
             <span class="wt-dir-name">${escapeHtml(folderName)}</span>
           </div>
-          <div>${statusBadge} ${prBadge}</div>
+          <div>${statusBadge} ${prBadge} ${serverBadge}</div>
         </div>
         <div class="wt-card-ports">
           ${portsHtml}
@@ -232,7 +254,19 @@ function renderWorktrees(filterQuery = "") {
       <div class="wt-card-footer">
         <span class="text-muted text-xs">${escapeHtml(wt.commit_hash.slice(0, 7))}</span>
         <div class="wt-actions-group">
+          ${
+            isRunning
+              ? `<button class="btn btn-warning btn-sm" onclick="stopServer('${escapeJsStr(wt.path)}')">Stop Dev</button>
+                 <button class="btn btn-secondary btn-sm" onclick="openLogsModal('${escapeJsStr(wt.path)}', '${escapeJsStr(wt.branch)}')">Logs</button>`
+              : `<button class="btn btn-success btn-sm" onclick="startServer('${escapeJsStr(wt.path)}')">Start Dev</button>`
+          }
           <button class="btn btn-secondary btn-sm" onclick="openInEditor('${escapeJsStr(wt.path)}')">Editor</button>
+          <button class="btn btn-secondary btn-sm" onclick="openBrowserForPath('${escapeJsStr(wt.path)}')">Browser</button>
+          ${
+            !wt.is_main && (!wt.pr_status || wt.pr_status.state === "NONE")
+              ? `<button class="btn btn-secondary btn-sm" onclick="createPR('${escapeJsStr(wt.path)}')">PR</button>`
+              : ""
+          }
           <button class="btn btn-secondary btn-sm" onclick="toggleLock('${escapeJsStr(wt.path)}', ${wt.is_locked})">${wt.is_locked ? "Unlock" : "Lock"}</button>
           ${!wt.is_main ? `<button class="btn btn-danger btn-sm" onclick="deleteWorktree('${escapeJsStr(wt.path)}')">Delete</button>` : ""}
         </div>
@@ -247,10 +281,18 @@ function renderWorktrees(filterQuery = "") {
       <td class="text-muted text-mono text-sm">${escapeHtml(folderName)}</td>
       <td>${statusBadge}</td>
       <td>${portsHtml}</td>
+      <td>${serverBadge || '<span class="text-muted">Stopped</span>'}</td>
       <td>${prBadge || '<span class="text-muted">-</span>'}</td>
       <td>
         <div class="wt-actions-group">
+          ${
+            isRunning
+              ? `<button class="btn btn-warning btn-sm" onclick="stopServer('${escapeJsStr(wt.path)}')">Stop</button>
+                 <button class="btn btn-secondary btn-sm" onclick="openLogsModal('${escapeJsStr(wt.path)}', '${escapeJsStr(wt.branch)}')">Logs</button>`
+              : `<button class="btn btn-success btn-sm" onclick="startServer('${escapeJsStr(wt.path)}')">Start</button>`
+          }
           <button class="btn btn-secondary btn-sm" onclick="openInEditor('${escapeJsStr(wt.path)}')">Editor</button>
+          <button class="btn btn-secondary btn-sm" onclick="openBrowserForPath('${escapeJsStr(wt.path)}')">Browser</button>
           <button class="btn btn-secondary btn-sm" onclick="toggleLock('${escapeJsStr(wt.path)}', ${wt.is_locked})">${wt.is_locked ? "Unlock" : "Lock"}</button>
           ${!wt.is_main ? `<button class="btn btn-danger btn-sm" onclick="deleteWorktree('${escapeJsStr(wt.path)}')">Delete</button>` : ""}
         </div>
@@ -258,6 +300,192 @@ function renderWorktrees(filterQuery = "") {
     `;
     tbody.appendChild(tr);
   });
+}
+
+// Branch Compare Functions
+function populateCompareDropdown() {
+  const select = document.getElementById("compareTargetSelect");
+  if (!select) return;
+  const currentVal = select.value;
+  select.innerHTML = "";
+
+  const nonMain = state.worktrees.filter((w) => !w.is_main);
+  if (nonMain.length === 0) {
+    select.innerHTML = `<option value="">No feature branches available</option>`;
+    return;
+  }
+
+  nonMain.forEach((w) => {
+    const opt = document.createElement("option");
+    opt.value = w.path;
+    opt.textContent = `${w.branch} (${w.path.split(/[\/\\]/).pop()})`;
+    if (w.path === currentVal) opt.selected = true;
+    select.appendChild(opt);
+  });
+
+  runBranchComparison();
+}
+
+async function runBranchComparison() {
+  const select = document.getElementById("compareTargetSelect");
+  const identifier = select.value;
+  if (!identifier) return;
+
+  const diffViewer = document.getElementById("compareDiffViewer");
+  diffViewer.innerHTML = "Computing branch differences against main...";
+
+  try {
+    const res = await fetch(`/api/compare?identifier=${encodeURIComponent(identifier)}&base=main`);
+    if (!res.ok) throw new Error("Comparison query failed");
+    const cmp = await res.json();
+
+    document.getElementById("compareAheadPill").textContent = `${cmp.ahead_count} Ahead`;
+    document.getElementById("compareBehindPill").textContent = `${cmp.behind_count} Behind`;
+
+    // Commits list
+    const commitsUl = document.getElementById("compareCommitsList");
+    commitsUl.innerHTML = "";
+    if (cmp.commits.length === 0) {
+      commitsUl.innerHTML = `<li class="text-muted">No unique commits on branch.</li>`;
+    } else {
+      cmp.commits.forEach((c) => {
+        const li = document.createElement("li");
+        li.innerHTML = `<span style="color: var(--accent-yellow)">${c.hash}</span> ${escapeHtml(c.message)} <span class="text-muted">(${escapeHtml(c.author)})</span>`;
+        commitsUl.appendChild(li);
+      });
+    }
+
+    // Changed files
+    const filesUl = document.getElementById("compareFilesList");
+    filesUl.innerHTML = "";
+    if (cmp.changed_files.length === 0) {
+      filesUl.innerHTML = `<li class="text-muted">No modified files.</li>`;
+    } else {
+      cmp.changed_files.forEach((f) => {
+        const li = document.createElement("li");
+        li.innerHTML = `<span style="color: var(--accent-green)">+${f.insertions}</span> <span style="color: var(--accent-red)">-${f.deletions}</span> ${escapeHtml(f.path)}`;
+        filesUl.appendChild(li);
+      });
+    }
+
+    // Diff
+    renderFormattedDiffInElement(cmp.unified_diff, diffViewer);
+  } catch (err) {
+    diffViewer.textContent = `Error: ${err.message}`;
+  }
+}
+
+// Dev Server Process Actions
+async function startServer(identifier) {
+  try {
+    const res = await fetch("/api/worktrees/process/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to start server");
+    }
+    const info = await res.json();
+    showToast(`Started dev server (PID: ${info.pid})`, "success");
+    fetchAllData();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function stopServer(identifier) {
+  try {
+    const res = await fetch("/api/worktrees/process/stop", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to stop server");
+    }
+    showToast("Dev server stopped", "info");
+    fetchAllData();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+function openLogsModal(identifier, branchName) {
+  state.activeLogWorktree = identifier;
+  document.getElementById("logsModalTitle").textContent = `Dev Output: ${branchName}`;
+  document.getElementById("modalLogs").classList.add("active");
+  refreshLogs();
+
+  if (state.logInterval) clearInterval(state.logInterval);
+  state.logInterval = setInterval(refreshLogs, 1500);
+}
+
+function closeLogsModal() {
+  document.getElementById("modalLogs").classList.remove("active");
+  if (state.logInterval) {
+    clearInterval(state.logInterval);
+    state.logInterval = null;
+  }
+  state.activeLogWorktree = null;
+}
+
+async function refreshLogs() {
+  if (!state.activeLogWorktree) return;
+  try {
+    const res = await fetch(
+      `/api/worktrees/process/logs?identifier=${encodeURIComponent(state.activeLogWorktree)}&tail=200`
+    );
+    const data = await res.json();
+    const pre = document.getElementById("logsPreText");
+    if (!data.logs || data.logs.length === 0) {
+      pre.textContent = "No log output recorded yet.";
+    } else {
+      pre.textContent = data.logs.join("\n");
+      const container = document.getElementById("logsConsoleContainer");
+      container.scrollTop = container.scrollHeight;
+    }
+  } catch (err) {}
+}
+
+async function openBrowserForPath(identifier) {
+  try {
+    const res = await fetch("/api/worktrees/browser", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Browser launch failed");
+    }
+    showToast("Opened localhost in browser", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function createPR(identifier) {
+  if (!confirm("Create a GitHub Pull Request for this branch?")) return;
+  try {
+    showToast("Creating Pull Request on GitHub...", "info");
+    const res = await fetch("/api/worktrees/pr/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to create PR");
+    }
+    const data = await res.json();
+    showToast(`Created PR: ${data.url}`, "success");
+    fetchAllData();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
 }
 
 // Stash Rendering
@@ -318,17 +546,15 @@ async function selectStash(index) {
     if (!res.ok) throw new Error("Failed to load diff");
     const diffData = await res.json();
 
-    // Render formatted diff
-    renderFormattedDiff(diffData.raw_diff);
+    renderFormattedDiffInElement(diffData.raw_diff, diffViewer);
   } catch (err) {
     diffViewer.textContent = `Error: ${err.message}`;
   }
 }
 
-function renderFormattedDiff(rawDiff) {
-  const diffViewer = document.getElementById("diffViewer");
+function renderFormattedDiffInElement(rawDiff, el) {
   if (!rawDiff || !rawDiff.trim()) {
-    diffViewer.innerHTML = `<span class="text-muted">Empty diff.</span>`;
+    el.innerHTML = `<span class="text-muted">Empty diff.</span>`;
     return;
   }
 
@@ -344,7 +570,7 @@ function renderFormattedDiff(rawDiff) {
     return escapeHtml(line);
   });
 
-  diffViewer.innerHTML = `<code>${formatted.join("\n")}</code>`;
+  el.innerHTML = `<code>${formatted.join("\n")}</code>`;
 }
 
 // Ports Rendering
@@ -508,6 +734,7 @@ async function handleNewWorktreeSubmit(e) {
   const offsetStr = document.getElementById("newPortOffset").value.trim();
   const port_offset = offsetStr ? parseInt(offsetStr, 10) : null;
   const configure_ports = document.getElementById("checkConfigurePorts").checked;
+  const link_deps = document.getElementById("checkLinkDeps").checked;
   const open_editor = document.getElementById("checkOpenEditor").checked;
 
   const btn = document.getElementById("btnSubmitNewWorktree");
@@ -523,6 +750,7 @@ async function handleNewWorktreeSubmit(e) {
         base_ref,
         port_offset,
         configure_ports,
+        link_deps,
         open_editor,
       }),
     });

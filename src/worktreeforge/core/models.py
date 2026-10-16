@@ -2,7 +2,7 @@
 
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -70,6 +70,17 @@ class PortRegistry(BaseModel):
         return removed
 
 
+class ProcessInfo(BaseModel):
+    """Information regarding a background dev server run."""
+
+    worktree_path: str
+    branch: str
+    command: str
+    pid: int
+    status: str = "RUNNING"
+    started_at: str = ""
+
+
 class WorktreeInfo(BaseModel):
     """Information representing a single Git worktree."""
 
@@ -85,6 +96,9 @@ class WorktreeInfo(BaseModel):
     active_ports: Dict[str, int] = Field(default_factory=dict)
     pr_status: Optional[PRStatus] = None
     created_at: Optional[str] = None
+    linked_dependencies: List[str] = Field(default_factory=list)
+    process: Optional[ProcessInfo] = None
+    http_ready: bool = False
 
     @property
     def display_name(self) -> str:
@@ -123,6 +137,18 @@ class StashDiff(BaseModel):
     files: Dict[str, str] = Field(default_factory=dict)
 
 
+class BranchComparison(BaseModel):
+    """Comparison results between two branches."""
+
+    base_branch: str
+    target_branch: str
+    ahead_count: int = 0
+    behind_count: int = 0
+    commits: List[Dict[str, str]] = Field(default_factory=list)
+    changed_files: List[Dict[str, Any]] = Field(default_factory=list)
+    unified_diff: str = ""
+
+
 class PortMultiplexerConfig(BaseModel):
     """Configuration for port multiplexing behavior."""
 
@@ -149,6 +175,36 @@ class PortMultiplexerConfig(BaseModel):
         ]
     )
     output_env_file: str = ".env.local"
+
+
+class DependencyConfig(BaseModel):
+    """Configuration for automatic dependency linking."""
+
+    enabled: bool = False
+    targets: List[str] = Field(
+        default_factory=lambda: [
+            "node_modules",
+            ".venv",
+            "venv",
+            ".next/cache",
+            ".turbo",
+            "target",
+        ]
+    )
+
+
+class SubmoduleConfig(BaseModel):
+    """Configuration for Git submodule handling."""
+
+    auto_init: bool = True
+    use_reference: bool = True
+
+
+class ProcessConfig(BaseModel):
+    """Configuration for dev server process runner."""
+
+    default_command: str = ""
+    auto_stop_on_remove: bool = True
 
 
 class PrunerConfig(BaseModel):
@@ -181,6 +237,9 @@ class AppConfig(BaseModel):
     port_multiplexer: PortMultiplexerConfig = Field(
         default_factory=PortMultiplexerConfig
     )
+    dependencies: DependencyConfig = Field(default_factory=DependencyConfig)
+    submodules: SubmoduleConfig = Field(default_factory=SubmoduleConfig)
+    process: ProcessConfig = Field(default_factory=ProcessConfig)
     pruner: PrunerConfig = Field(default_factory=PrunerConfig)
     editor: EditorConfig = Field(default_factory=EditorConfig)
     hooks: HooksConfig = Field(default_factory=HooksConfig)

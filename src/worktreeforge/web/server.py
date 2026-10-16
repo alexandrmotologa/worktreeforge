@@ -12,7 +12,9 @@ from pydantic import BaseModel
 from worktreeforge import __version__
 from worktreeforge.core.git_client import GitError
 from worktreeforge.core.models import (
+    BranchComparison,
     PortAllocation,
+    ProcessInfo,
     StashDiff,
     StashEntry,
     WorktreeInfo,
@@ -81,6 +83,7 @@ class CreateWorktreeRequest(BaseModel):
     path: Optional[str] = None
     port_offset: Optional[int] = None
     configure_ports: bool = True
+    link_deps: Optional[bool] = None
     open_editor: bool = False
 
 
@@ -111,6 +114,27 @@ class ApplyStashRequest(BaseModel):
     drop: bool = False
 
 
+class StartProcessRequest(BaseModel):
+    identifier: str
+    command: Optional[str] = None
+
+
+class StopProcessRequest(BaseModel):
+    identifier: str
+
+
+class OpenBrowserRequest(BaseModel):
+    identifier: str
+    path: str = "/"
+
+
+class CreatePRRequest(BaseModel):
+    identifier: str
+    title: Optional[str] = None
+    body: Optional[str] = None
+    draft: bool = False
+
+
 # -----------------------------------------------------------------------------
 # REST Endpoints
 # -----------------------------------------------------------------------------
@@ -119,7 +143,7 @@ class ApplyStashRequest(BaseModel):
 @app.get("/api/status")
 def get_system_status():
     sup = get_supervisor()
-    worktrees = sup.list_worktrees(enrich_ports=True, enrich_pr=False)
+    worktrees = sup.list_worktrees(enrich_ports=True, enrich_pr=False, enrich_process=True, enrich_http=False)
     allocations = sup.port_allocator.list_all_allocations()
     stashes = sup.stash_inspector.list_all()
 
@@ -137,7 +161,7 @@ def get_system_status():
 def list_worktrees():
     sup = get_supervisor()
     try:
-        return sup.list_worktrees(enrich_ports=True, enrich_pr=True)
+        return sup.list_worktrees(enrich_ports=True, enrich_pr=True, enrich_process=True, enrich_http=True)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -153,6 +177,7 @@ async def create_worktree(req: CreateWorktreeRequest):
             target_path=target_path,
             port_offset=req.port_offset,
             configure_ports=req.configure_ports,
+            link_deps=req.link_deps,
         )
         if req.open_editor:
             sup.open_editor(Path(wt.path))
@@ -225,6 +250,87 @@ def open_in_editor(req: OpenEditorRequest):
         raise HTTPException(status_code=404, detail="Directory not found")
     launched = sup.open_editor(target_path)
     return {"success": launched}
+
+
+# -----------------------------------------------------------------------------
+# Process & Dev Server Endpoints
+# -----------------------------------------------------------------------------
+
+
+@app.post("/api/worktrees/process/start", response_model=ProcessInfo)
+async def start_dev_server(req: StartProcessRequest):
+    sup = get_supervisor()
+    try:
+        info = sup.start_dev_server(req.identifier, command=req.command)
+        await ws_manager.broadcast({"event": "process_started", "branch": info.branch, "pid": info.pid})
+        return info
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/worktrees/process/stop")
+async def stop_dev_server(req: StopProcessRequest):
+    sup = get_supervisor()
+    try:
+        stopped = sup.stop_dev_server(req.identifier)
+        await ws_manager.broadcast({"event": "process_stopped", "identifier": req.identifier})
+        return {"success": stopped}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/worktrees/process/logs")
+def get_dev_server_logs(identifier: str, tail: int = 100):
+    sup = get_supervisor()
+    logs = sup.get_dev_logs(identifier, tail=tail)
+    return {"logs": logs}
+
+
+@app.post("/api/worktrees/browser")
+def open_browser_endpoint(req: OpenBrowserRequest):
+    sup = get_supervisor()
+    try:
+        launched = sup.open_browser(req.identifier, path=req.path)
+        return {"success": launched}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# -----------------------------------------------------------------------------
+# Comparison & GitHub PR Endpoints
+# -----------------------------------------------------------------------------
+
+
+@app.get("/api/compare", response_model=BranchComparison)
+def compare_branch_endpoint(identifier: str, base: Optional[str] = None):
+    sup = get_supervisor()
+    try:
+        return sup.compare_branch(identifier, base_branch=base)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/worktrees/pr/create")
+async def create_pr_endpoint(req: CreatePRRequest):
+    sup = get_supervisor()
+    try:
+        res = sup.create_github_pr(
+            req.identifier,
+            title=req.title,
+            body=req.body,
+            draft=req.draft,
+        )
+        if res.get("success"):
+            await ws_manager.broadcast({"event": "pr_created", "url": res.get("url")})
+            return res
+        raise HTTPException(status_code=400, detail=res.get("error", "PR creation failed"))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# -----------------------------------------------------------------------------
+# Ports & Stashes Endpoints
+# -----------------------------------------------------------------------------
 
 
 @app.get("/api/ports")

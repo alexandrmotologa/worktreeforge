@@ -235,6 +235,115 @@ class GitClient:
         flag = "-D" if force else "-d"
         self.run(["branch", flag, branch], cwd=cwd)
 
+    def init_submodules(
+        self, path: Path, reference_repo: Optional[Path] = None
+    ) -> bool:
+        """Initialize and update Git submodules if present."""
+        gitmodules_file = path / ".gitmodules"
+        if not gitmodules_file.is_file():
+            return False
+
+        cmd = ["submodule", "update", "--init", "--recursive"]
+        if reference_repo and reference_repo.is_dir():
+            cmd.extend(["--reference", str(reference_repo.resolve())])
+
+        try:
+            self.run(cmd, cwd=path, check=False, timeout=60)
+            return True
+        except Exception:
+            return False
+
+    def pull_lfs(self, path: Path) -> bool:
+        """Fetch Git LFS tracked files if present."""
+        gitattributes = path / ".gitattributes"
+        if not gitattributes.is_file():
+            return False
+
+        try:
+            content = gitattributes.read_text(encoding="utf-8", errors="replace")
+            if "filter=lfs" in content:
+                self.run(["lfs", "pull"], cwd=path, check=False, timeout=60)
+                return True
+        except Exception:
+            pass
+        return False
+
+    def compare_branches(
+        self, base_branch: str, target_branch: str, cwd: Optional[Path] = None
+    ) -> "BranchComparison":
+        """Compare two branches and return ahead/behind counts, commits, and diff."""
+        from worktreeforge.core.models import BranchComparison
+
+        target_dir = cwd or self.cwd
+
+        # 1. Ahead / behind counts
+        behind = 0
+        ahead = 0
+        code, stdout, _ = self.run(
+            ["rev-list", "--left-right", "--count", f"{base_branch}...{target_branch}"],
+            cwd=target_dir,
+            check=False,
+        )
+        if code == 0 and "\t" in stdout:
+            parts = stdout.strip().split("\t")
+            if len(parts) >= 2:
+                behind = int(parts[0]) if parts[0].isdigit() else 0
+                ahead = int(parts[1]) if parts[1].isdigit() else 0
+
+        # 2. Commit log
+        commits: List[Dict[str, str]] = []
+        code, stdout, _ = self.run(
+            ["log", f"{base_branch}..{target_branch}", "--pretty=format:%h|%an|%ci|%s", "-n", "50"],
+            cwd=target_dir,
+            check=False,
+        )
+        if code == 0:
+            for line in stdout.splitlines():
+                parts = line.strip().split("|")
+                if len(parts) >= 4:
+                    commits.append({
+                        "hash": parts[0],
+                        "author": parts[1],
+                        "date": parts[2],
+                        "message": "|".join(parts[3:]),
+                    })
+
+        # 3. File statistics
+        changed_files: List[Dict[str, Any]] = []
+        code, stdout, _ = self.run(
+            ["diff", "--numstat", f"{base_branch}...{target_branch}"],
+            cwd=target_dir,
+            check=False,
+        )
+        if code == 0:
+            for line in stdout.splitlines():
+                parts = line.strip().split("\t")
+                if len(parts) == 3:
+                    ins = int(parts[0]) if parts[0].isdigit() else 0
+                    dels = int(parts[1]) if parts[1].isdigit() else 0
+                    changed_files.append({
+                        "path": parts[2],
+                        "insertions": ins,
+                        "deletions": dels,
+                    })
+
+        # 4. Unified diff
+        _, raw_diff, _ = self.run(
+            ["diff", f"{base_branch}...{target_branch}"],
+            cwd=target_dir,
+            check=False,
+        )
+
+        return BranchComparison(
+            base_branch=base_branch,
+            target_branch=target_branch,
+            ahead_count=ahead,
+            behind_count=behind,
+            commits=commits,
+            changed_files=changed_files,
+            unified_diff=raw_diff,
+        )
+
     # -------------------------------------------------------------------------
     # Stash Management
     # -------------------------------------------------------------------------

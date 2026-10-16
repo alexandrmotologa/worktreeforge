@@ -157,6 +157,15 @@ body {
   background: var(--bg-surface-hover);
 }
 
+.btn-success {
+  background: var(--accent-green-bg);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--accent-green);
+}
+.btn-success:hover {
+  background: rgba(16, 185, 129, 0.2);
+}
+
 .btn-warning {
   background: var(--accent-yellow-bg);
   border-color: rgba(245, 158, 11, 0.3);
@@ -257,7 +266,7 @@ body {
   gap: 16px;
 }
 
-.input-search {
+.input-search, .form-select {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
@@ -265,10 +274,9 @@ body {
   font-size: 13px;
   padding: 8px 14px;
   border-radius: var(--radius-md);
-  width: 320px;
   outline: none;
 }
-.input-search:focus {
+.input-search:focus, .form-select:focus {
   border-color: var(--border-color-focus);
 }
 
@@ -294,7 +302,7 @@ body {
 
 .worktrees-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 16px;
 }
 
@@ -361,12 +369,14 @@ body {
 .badge-locked { background: var(--accent-red-bg); color: var(--accent-red); }
 .badge-pr-merged { background: rgba(139, 92, 246, 0.16); color: var(--accent-purple); border: 1px solid rgba(139, 92, 246, 0.3); }
 .badge-pr-open { background: rgba(59, 130, 246, 0.16); color: var(--accent-blue); border: 1px solid rgba(59, 130, 246, 0.3); }
+.badge-server-running { background: rgba(16, 185, 129, 0.16); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
 
 .wt-card-ports {
   margin: 12px 0;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  align-items: center;
 }
 
 .port-pill {
@@ -380,6 +390,11 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.port-pill:hover {
+  border-color: var(--accent-blue);
 }
 
 .port-dot {
@@ -387,6 +402,9 @@ body {
   height: 6px;
   border-radius: 50%;
   background: var(--accent-green);
+}
+.port-dot.pulse {
+  box-shadow: 0 0 6px var(--accent-green);
 }
 
 .wt-card-footer {
@@ -396,11 +414,71 @@ body {
   padding-top: 12px;
   border-top: 1px solid var(--border-color);
   margin-top: 6px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .wt-actions-group {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Branch Compare */
+.compare-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+.compare-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 12px 18px;
+  border-radius: var(--radius-lg);
+}
+
+.compare-selectors {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compare-stats-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.compare-commits-list, .compare-files-list {
+  list-style: none;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.compare-commits-list li, .compare-files-list li {
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.compare-diff-viewer {
+  flex: 1;
+  background: #090d14;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: auto;
+  padding: 16px;
 }
 
 /* Data Table */
@@ -585,6 +663,28 @@ body {
   max-width: 90vw;
   padding: 24px;
   box-shadow: var(--shadow-lg);
+}
+
+.modal-card-wide {
+  width: 780px;
+  max-width: 95vw;
+}
+
+.logs-console {
+  background: #05070a;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  height: 380px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.logs-pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #38bdf8;
 }
 
 .modal-header {

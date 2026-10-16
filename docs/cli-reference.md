@@ -42,6 +42,7 @@ Options:
 - `--path <dir>`: Custom destination folder path (default: `../{repo}-{branch}`).
 - `--port-offset <int>`: Explicit port offset increment.
 - `--no-ports`: Skip port multiplexing and `.env.local` generation.
+- `--link-deps`: Fast-link dependency folders (`node_modules`, `.venv`, `.cargo`, `target`) from the root workspace using directory junctions or symlinks.
 - `--open`: Open the created worktree in your configured editor (VS Code, Cursor).
 
 ---
@@ -176,4 +177,95 @@ Start the FastAPI web studio server and browser dashboard.
 
 ```bash
 worktreeforge web --port 8990 --host 127.0.0.1
+```
+
+---
+
+## Process & Dev Server Supervisor
+
+### `worktreeforge start <name_or_path> [command]`
+Start a dev server or build command in the background inside the target worktree. If command is omitted, it auto-detects `npm run dev`, `pnpm dev`, `cargo run`, or `python main.py`.
+
+```bash
+worktreeforge start feature/payments
+worktreeforge start feature/payments "npm run start"
+```
+
+---
+
+### `worktreeforge stop <name_or_path>`
+Terminate the running background process and its entire child process tree.
+
+```bash
+worktreeforge stop feature/payments
+```
+
+---
+
+### `worktreeforge logs <name_or_path>`
+Inspect live or buffered stdout and stderr logs for the background process.
+
+```bash
+worktreeforge logs feature/payments
+worktreeforge logs feature/payments --lines 50
+```
+
+---
+
+## Comparison Studio
+
+### `worktreeforge compare [target_branch] [base_branch]`
+Compare commit divergence, ahead/behind counts, commit logs, and file diffs between two branches or worktrees. Defaults to comparing current branch against the default branch (`main` or `master`).
+
+```bash
+worktreeforge compare
+worktreeforge compare feature/payments main
+```
+
+---
+
+## Navigation & Launcher
+
+### `worktreeforge open <name_or_path>`
+Open the worktree in your code editor or probe and launch its running web application in the default browser.
+
+```bash
+worktreeforge open feature/payments --editor
+worktreeforge open feature/payments --browser
+```
+
+---
+
+### `worktreeforge path <name_or_path>`
+Print the exact absolute filesystem path of a worktree (used for script piping and terminal cd).
+
+```bash
+worktreeforge path feature/payments
+```
+
+---
+
+### `worktreeforge init [pwsh|bash]`
+Print shell integration script defining the fast cd wrapper `wtf cd <branch>`:
+
+```powershell
+# PowerShell ($PROFILE):
+Invoke-Expression (& worktreeforge init pwsh)
+```
+
+```bash
+# Bash / Zsh (~/.bashrc or ~/.zshrc):
+eval "$(worktreeforge init bash)"
+```
+
+---
+
+## GitHub Pull Requests
+
+### `worktreeforge pr create [branch]`
+Create a GitHub Pull Request for the worktree branch using the `gh` CLI.
+
+```bash
+worktreeforge pr create
+worktreeforge pr create feature/payments --title "Add Stripe webhook listener" --draft
 ```

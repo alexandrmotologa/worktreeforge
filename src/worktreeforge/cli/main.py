@@ -9,6 +9,7 @@ from rich.table import Table
 import typer
 
 from worktreeforge import __version__
+from worktreeforge.cli.shell_init import generate_shell_script
 from worktreeforge.core.git_client import GitError
 from worktreeforge.core.models import PRState
 from worktreeforge.core.supervisor import SupervisorError, WorktreeSupervisor
@@ -24,7 +25,13 @@ stash_app = typer.Typer(
     help="Inspect, search, and manage Git stashes.",
     no_args_is_help=True,
 )
+pr_app = typer.Typer(
+    name="pr",
+    help="Manage GitHub pull requests for worktrees.",
+    no_args_is_help=True,
+)
 app.add_typer(stash_app, name="stash")
+app.add_typer(pr_app, name="pr")
 
 console = Console()
 
@@ -87,6 +94,7 @@ def list_worktrees(
     table.add_column("Directory", style="dim")
     table.add_column("Status", justify="center")
     table.add_column("Ports", style="yellow")
+    table.add_column("Server", justify="center")
     table.add_column("GitHub PR", justify="center")
 
     for wt in worktrees:
@@ -115,8 +123,16 @@ def list_worktrees(
         if wt.active_ports:
             port_items = [f"{k}={v}" for k, v in wt.active_ports.items()]
             ports_str = ", ".join(port_items)
+            if wt.http_ready:
+                ports_str += " [bold green]●[/]"
         else:
             ports_str = "[dim]none[/]"
+
+        # Process server status
+        if wt.process and wt.process.status == "RUNNING":
+            server_str = f"[bold green]RUNNING (PID {wt.process.pid})[/]"
+        else:
+            server_str = "[dim]-[/]"
 
         # GitHub PR
         if wt.pr_status and wt.pr_status.state != PRState.NONE:
@@ -133,7 +149,7 @@ def list_worktrees(
         else:
             pr_str = "[dim]-[/]"
 
-        table.add_row(branch_str, dir_str, status_str, ports_str, pr_str)
+        table.add_row(branch_str, dir_str, status_str, ports_str, server_str, pr_str)
 
     console.print(table)
 
@@ -153,6 +169,9 @@ def new_worktree(
     no_ports: bool = typer.Option(
         False, "--no-ports", help="Do not allocate ports or update .env.local."
     ),
+    link_deps: bool = typer.Option(
+        True, "--link-deps/--no-link-deps", help="Fast-link shared node_modules and .venv."
+    ),
     open_editor: bool = typer.Option(
         False, "--open", "-o", help="Open newly created worktree in editor."
     ),
@@ -169,10 +188,17 @@ def new_worktree(
                 target_path=target_path,
                 port_offset=port_offset,
                 configure_ports=not no_ports,
+                link_deps=link_deps,
             )
         except (SupervisorError, GitError) as e:
             console.print(f"[bold red]Error:[/] {str(e)}")
             raise typer.Exit(code=1)
+
+    linked_info = (
+        f"\n[bold]Linked Deps:[/] {', '.join(wt_info.linked_dependencies)}"
+        if wt_info.linked_dependencies
+        else ""
+    )
 
     console.print(
         Panel(
@@ -184,7 +210,8 @@ def new_worktree(
                 ", ".join(f"{a.port_variable}={a.allocated_port}" for a in allocations)
                 if allocations
                 else "[dim]none configured[/]"
-            ),
+            )
+            + linked_info,
             title="WorktreeForge Provisioner",
             border_style="green",
         )
@@ -196,6 +223,28 @@ def new_worktree(
             console.print("[dim]Opened in editor.[/]")
         else:
             console.print("[yellow]No supported editor detected in PATH.[/]")
+
+
+@app.command("path")
+def get_path(
+    identifier: str = typer.Argument(..., help="Branch or folder name."),
+):
+    """Output the absolute path of a worktree (used by 'wtf cd')."""
+    supervisor = get_supervisor()
+    wt = supervisor.find_worktree(identifier)
+    if wt:
+        print(wt.path)
+    else:
+        raise typer.Exit(code=1)
+
+
+@app.command("init")
+def init_shell(
+    shell: str = typer.Argument("pwsh", help="Shell type: pwsh, bash, or zsh."),
+):
+    """Output shell integration hook for instant navigation (wtf cd <branch>)."""
+    script = generate_shell_script(shell)
+    print(script)
 
 
 @app.command("remove")
@@ -210,7 +259,7 @@ def remove_worktree(
         False, "--delete-branch", "-d", help="Also delete the local Git branch."
     ),
 ):
-    """Safely remove a worktree directory and release allocated ports."""
+    """Safely remove a worktree directory, stop background servers, and release allocated ports."""
     supervisor = get_supervisor()
     try:
         wt, released = supervisor.remove_worktree(
@@ -259,6 +308,111 @@ def unlock_worktree(
     except (SupervisorError, GitError) as e:
         console.print(f"[bold red]Error:[/] {str(e)}")
         raise typer.Exit(code=1)
+
+
+@app.command("start")
+def start_dev(
+    identifier: str = typer.Argument(..., help="Worktree branch or path to launch."),
+    cmd: Optional[str] = typer.Option(
+        None, "--cmd", "-c", help="Custom command to run (e.g. 'npm run dev')."
+    ),
+):
+    """Start dev server in background for this worktree."""
+    supervisor = get_supervisor()
+    try:
+        proc = supervisor.start_dev_server(identifier, command=cmd)
+        console.print(
+            f"[bold green]Started dev server:[/] [cyan]{proc.command}[/] (PID: {proc.pid})"
+        )
+    except Exception as e:
+        console.print(f"[bold red]Failed to start server:[/] {str(e)}")
+        raise typer.Exit(code=1)
+
+
+@app.command("stop")
+def stop_dev(
+    identifier: str = typer.Argument(..., help="Worktree branch or path to stop."),
+):
+    """Stop background dev server for this worktree."""
+    supervisor = get_supervisor()
+    try:
+        stopped = supervisor.stop_dev_server(identifier)
+        if stopped:
+            console.print(f"[bold green]Stopped dev server for '{identifier}'.[/]")
+        else:
+            console.print(f"[yellow]No active server was running for '{identifier}'.[/]")
+    except Exception as e:
+        console.print(f"[bold red]Failed to stop server:[/] {str(e)}")
+        raise typer.Exit(code=1)
+
+
+@app.command("logs")
+def view_logs(
+    identifier: str = typer.Argument(..., help="Worktree branch or path."),
+    tail: int = typer.Option(50, "--tail", "-n", help="Number of lines to show."),
+):
+    """View background dev server console logs."""
+    supervisor = get_supervisor()
+    logs = supervisor.get_dev_logs(identifier, tail=tail)
+    if not logs:
+        console.print(f"[dim]No logs captured for '{identifier}'.[/]")
+        return
+    for line in logs:
+        console.print(line)
+
+
+@app.command("compare")
+def compare_branch(
+    identifier: str = typer.Argument(..., help="Worktree branch to compare."),
+    base: Optional[str] = typer.Option(None, "--base", "-b", help="Base branch (default: main)."),
+):
+    """Compare worktree branch against base branch (ahead/behind, commits, diff)."""
+    supervisor = get_supervisor()
+    try:
+        cmp = supervisor.compare_branch(identifier, base_branch=base)
+    except Exception as e:
+        console.print(f"[bold red]Compare failed:[/] {str(e)}")
+        raise typer.Exit(code=1)
+
+    console.print(
+        f"[bold cyan]Comparing[/] [yellow]{cmp.target_branch}[/] [dim]with[/] [green]{cmp.base_branch}[/]"
+    )
+    console.print(
+        f"Commits: [bold green]+{cmp.ahead_count} ahead[/], [bold red]-{cmp.behind_count} behind[/]"
+    )
+
+    if cmp.commits:
+        console.print("\n[bold]Recent Commits:[/]")
+        for c in cmp.commits[:10]:
+            console.print(f"  [yellow]{c['hash']}[/] {c['message']} [dim]({c['author']})[/]")
+
+    if cmp.changed_files:
+        console.print("\n[bold]Changed Files:[/]")
+        for f in cmp.changed_files:
+            console.print(f"  [green]+{f['insertions']}[/] [red]-{f['deletions']}[/] {f['path']}")
+
+
+@app.command("open")
+def open_worktree(
+    identifier: str = typer.Argument(..., help="Worktree branch or path."),
+    browser: bool = typer.Option(False, "--browser", "-b", help="Open allocated port in browser."),
+    editor: bool = typer.Option(False, "--editor", "-e", help="Open folder in code editor."),
+):
+    """Open worktree in code editor or launch its allocated port in web browser."""
+    supervisor = get_supervisor()
+    wt = supervisor.find_worktree(identifier)
+    if not wt:
+        console.print(f"[bold red]Worktree '{identifier}' not found.[/]")
+        raise typer.Exit(code=1)
+
+    if browser or not editor:
+        launched = supervisor.open_browser(identifier)
+        if launched:
+            console.print(f"[bold green]Opened localhost in web browser.[/]")
+
+    if editor:
+        supervisor.open_editor(Path(wt.path))
+        console.print(f"[bold green]Opened editor.[/]")
 
 
 @app.command("ports")
@@ -348,6 +502,37 @@ def prune_worktrees(
         # Standard git worktree prune
         supervisor.git.prune_worktrees(cwd=supervisor.repo_root)
         console.print("[bold green]Pruned stale Git worktree metadata.[/]")
+
+
+# -----------------------------------------------------------------------------
+# GitHub PR Commands
+# -----------------------------------------------------------------------------
+
+
+@pr_app.command("create")
+def create_pr_cmd(
+    identifier: str = typer.Argument(..., help="Worktree branch to create PR for."),
+    title: Optional[str] = typer.Option(None, "--title", "-t", help="PR title."),
+    body: Optional[str] = typer.Option(None, "--body", "-b", help="PR description."),
+    draft: bool = typer.Option(False, "--draft", help="Create as draft PR."),
+):
+    """Create a new GitHub pull request for this branch via gh CLI."""
+    supervisor = get_supervisor()
+    with console.status("[bold cyan]Creating GitHub Pull Request...[/]"):
+        res = supervisor.create_github_pr(identifier, title=title, body=body, draft=draft)
+
+    if res.get("success"):
+        console.print(
+            Panel(
+                f"[bold green]Pull Request Created Successfully![/]\n"
+                f"[cyan]{res.get('url')}[/]",
+                title="GitHub PR",
+                border_style="green",
+            )
+        )
+    else:
+        console.print(f"[bold red]PR creation failed:[/] {res.get('error')}")
+        raise typer.Exit(code=1)
 
 
 # -----------------------------------------------------------------------------

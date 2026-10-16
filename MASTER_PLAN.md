@@ -206,3 +206,14 @@ worktreeforge/
 - [x] Subtask 10.1: Generate authentic high-resolution UI preview (`docs/images/worktreeforge_preview.png`).
 - [x] Subtask 10.2: Generate animated demo GIF (`docs/images/worktreeforge_demo.gif`).
 - [x] Subtask 10.3: Execute MTLG Portfolio Sync Phase 2: migrate assets to `mtlg-site` and `mtlglabs-space`, update `projects.json` to LIVE, run sync scripts, commit/push, and broadcast to X.
+
+### Task 11: Usability & Advanced Improvements Suite
+- [x] Subtask 11.1: Dependency Fast-Link & Cache Sharing (`DependencyLinker` with Windows junctions and Unix symlinks for `node_modules`, `.venv`, `.cargo`, `target`).
+- [x] Subtask 11.2: Integrated Process Supervisor & Live Dev Server Runner (`ProcessManager` background execution, PID tracking, process tree termination, and circular log buffer).
+- [x] Subtask 11.3: Shell Integration & Instant Navigation (`worktreeforge init [pwsh|bash]` and `wtf cd <branch>` helper wrapper).
+- [x] Subtask 11.4: Branch & Worktree Comparison Studio (ahead/behind commit count calculation, commit log inspection, and file diff viewer).
+- [x] Subtask 11.5: 1-Click Browser Launcher & HTTP Health Prober (`health_prober.py` with port detection, HTTP polling, and browser launching).
+- [x] Subtask 11.6: Git Submodule & Git LFS Auto-Handling (`init_submodules=True` and `pull_lfs=True` support in worktree creation).
+- [x] Subtask 11.7: 1-Click GitHub PR Creation (`pr create` CLI command and Web Studio modal).
+- [x] Subtask 11.8: Extended Automated Tests (10 new tests covering dependency linker, process manager, health prober, branch comparison, new CLI commands, and web endpoints; 35/35 passing).
+

@@ -42,9 +42,13 @@ WorktreeForge automates worktree creation, assigns non-conflicting port offsets 
 
 - **Deterministic port multiplexing**: Scans `.env`, `.env.example`, and `package.json` for declared ports (such as `PORT`, `VITE_PORT`, `SERVER_PORT`) and generates `.env.local` files with incremented offsets (Base: 3000, Worktree 1: 3001, Worktree 2: 3002).
 - **Socket availability verification**: Tests each assigned port via non-blocking TCP socket binding before saving the configuration.
-- **Git worktree supervisor**: Creates, lists, locks, and removes worktree directories with porcelain output parsing and dirty-state safety checks.
+- **Dependency fast-linking**: Shares `node_modules`, `.venv`, `.cargo`, and `target` directories between worktrees via Windows directory junctions and Unix symlinks to avoid duplicate multi-gigabyte package reinstalls.
+- **Process supervisor & dev server manager**: Runs development servers in the background with process tree termination and in-memory log streaming.
+- **Branch comparison studio**: Calculates ahead/behind commit counts, inspects commit logs, and reviews file diffs across worktrees.
+- **Git submodule & LFS auto-handling**: Automatically initializes submodules and pulls LFS objects during worktree creation.
+- **Shell integration**: Provides instant terminal navigation with `wtf cd <branch>` for PowerShell and Bash.
 - **Visual Stash Studio**: Displays git stashes with file lists, unified diffs, search across changes, and direct apply or drop actions.
-- **GitHub PR status detection**: Queries `gh pr view` to mark worktrees whose PRs are already merged, closed, or open.
+- **GitHub PR status & 1-click PR creation**: Queries `gh pr view` for merge status and creates pull requests directly from the CLI or Web UI.
 - **Safe auto-pruning**: Removes merged worktrees and clears orphaned Git references while safeguarding uncommitted changes.
 - **Terminal UI and Web Studio**: Includes both a keyboard-driven Textual terminal dashboard and a FastAPI web interface with live updates.
 
@@ -162,11 +166,19 @@ worktreeforge web --port 8990
 | Command | Description |
 | :--- | :--- |
 | `worktreeforge list` | List all worktrees with branches, paths, lock status, and allocated ports |
-| `worktreeforge new <branch>` | Provision a new worktree with automatic port offset allocation |
+| `worktreeforge new <branch>` | Provision a new worktree with port multiplexing and optional `--link-deps` |
 | `worktreeforge remove <name>` | Safely remove a worktree directory and prune Git metadata |
 | `worktreeforge lock <name>` | Prevent a worktree from being pruned or deleted |
 | `worktreeforge unlock <name>` | Remove lock flag from a worktree |
 | `worktreeforge ports` | Show active port allocations and run socket checks |
+| `worktreeforge start <name> [cmd]` | Launch dev server in background with process tree supervisor |
+| `worktreeforge stop <name>` | Stop background process and clean up socket listeners |
+| `worktreeforge logs <name>` | View live stdout and stderr output buffer |
+| `worktreeforge compare [target] [base]` | Compare commits and file diffs between branches or worktrees |
+| `worktreeforge open <name>` | Open worktree in code editor or launch active web app in browser |
+| `worktreeforge path <name>` | Print absolute filesystem path for shell piping |
+| `worktreeforge init [pwsh\|bash]` | Generate shell integration hook for `wtf cd <branch>` navigation |
+| `worktreeforge pr create [branch]` | Create a GitHub PR for the worktree branch via GitHub CLI |
 | `worktreeforge stash list` | Display all stashes with author, branch, and relative timestamp |
 | `worktreeforge stash show <id>` | View unified diff of a specific stash entry |
 | `worktreeforge stash apply <id>` | Apply a stash to the current worktree |

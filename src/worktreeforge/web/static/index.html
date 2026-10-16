@@ -43,6 +43,9 @@
     <button class="nav-tab active" data-tab="worktrees">
       Worktrees <span class="tab-count" id="countWorktrees">0</span>
     </button>
+    <button class="nav-tab" data-tab="compare">
+      Branch Compare
+    </button>
     <button class="nav-tab" data-tab="stashes">
       Stash Studio <span class="tab-count" id="countStashes">0</span>
     </button>
@@ -72,8 +75,9 @@
             <tr>
               <th>Branch</th>
               <th>Directory</th>
-              <th>Git Status</th>
-              <th>Allocated Ports</th>
+              <th>Status</th>
+              <th>Ports</th>
+              <th>Dev Server</th>
               <th>GitHub PR</th>
               <th>Actions</th>
             </tr>
@@ -82,6 +86,40 @@
             <!-- Rendered via JS -->
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- Branch Compare Tab -->
+    <section class="tab-content" id="tabCompare">
+      <div class="compare-layout">
+        <div class="compare-toolbar">
+          <div class="compare-selectors">
+            <label for="compareTargetSelect">Compare Worktree Branch:</label>
+            <select id="compareTargetSelect" class="form-select"></select>
+            <span class="text-muted">against</span>
+            <span class="badge badge-clean">main</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btnRefreshCompare">Compare Now</button>
+        </div>
+
+        <div class="compare-stats-card" id="compareStatsCard">
+          <div class="stats-pills">
+            <span class="badge badge-clean" id="compareAheadPill">0 Ahead</span>
+            <span class="badge badge-dirty" id="compareBehindPill">0 Behind</span>
+          </div>
+          <div class="commits-list-container" id="compareCommitsContainer">
+            <h4>Branch Commits</h4>
+            <ul class="compare-commits-list" id="compareCommitsList"></ul>
+          </div>
+          <div class="files-list-container" id="compareFilesContainer">
+            <h4>Changed Files</h4>
+            <ul class="compare-files-list" id="compareFilesList"></ul>
+          </div>
+        </div>
+
+        <div class="compare-diff-viewer">
+          <pre class="diff-viewer" id="compareDiffViewer"><code>Select a worktree branch to compare with main.</code></pre>
+        </div>
       </div>
     </section>
 
@@ -169,6 +207,10 @@
           <label for="checkConfigurePorts">Generate .env.local with multiplexed ports</label>
         </div>
         <div class="form-check">
+          <input type="checkbox" id="checkLinkDeps" checked>
+          <label for="checkLinkDeps">Fast-link shared node_modules &amp; .venv (Zero-wait bootstrap)</label>
+        </div>
+        <div class="form-check">
           <input type="checkbox" id="checkOpenEditor">
           <label for="checkOpenEditor">Open in code editor after creation</label>
         </div>
@@ -177,6 +219,22 @@
           <button type="submit" class="btn btn-primary" id="btnSubmitNewWorktree">Provision Worktree</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Live Logs Modal -->
+  <div class="modal-backdrop" id="modalLogs">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <h3 id="logsModalTitle">Dev Server Output</h3>
+        <button class="modal-close" id="logsModalCloseBtn">&times;</button>
+      </div>
+      <div class="logs-console" id="logsConsoleContainer">
+        <pre class="logs-pre" id="logsPreText"><code>Connecting to server log stream...</code></pre>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="logsModalCloseAction">Close</button>
+      </div>
     </div>
   </div>
 

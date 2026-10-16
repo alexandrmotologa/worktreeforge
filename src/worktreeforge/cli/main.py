@@ -363,13 +363,20 @@ def view_logs(
 
 @app.command("compare")
 def compare_branch(
-    identifier: str = typer.Argument(..., help="Worktree branch to compare."),
+    identifier: Optional[str] = typer.Argument(
+        None, help="Worktree branch to compare (defaults to current worktree branch)."
+    ),
     base: Optional[str] = typer.Option(None, "--base", "-b", help="Base branch (default: main)."),
 ):
     """Compare worktree branch against base branch (ahead/behind, commits, diff)."""
     supervisor = get_supervisor()
+    target = identifier
+    if not target:
+        wts = supervisor.list_worktrees(enrich=False)
+        target = wts[0].branch if wts else "main"
+
     try:
-        cmp = supervisor.compare_branch(identifier, base_branch=base)
+        cmp = supervisor.compare_branch(target, base_branch=base)
     except Exception as e:
         console.print(f"[bold red]Compare failed:[/] {str(e)}")
         raise typer.Exit(code=1)

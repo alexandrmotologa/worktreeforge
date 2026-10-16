@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WorktreeForge Web Studio</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand">
+        <span class="brand-icon">⚡</span>
+        <span class="brand-title">WorktreeForge</span>
+        <span class="brand-badge">Studio</span>
+      </div>
+      <div class="repo-badge" id="repoBadge">
+        <span class="repo-icon">📂</span>
+        <span class="repo-name" id="repoName">Loading repo...</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="ws-status" id="wsStatus">
+        <span class="status-dot"></span>
+        <span class="status-text">Connecting</span>
+      </div>
+      <button class="btn btn-secondary" id="btnRefresh" title="Refresh data">
+        <span class="icon">↻</span> Refresh
+      </button>
+      <button class="btn btn-warning" id="btnPruneMerged" title="Prune merged PR worktrees">
+        <span class="icon">✂</span> Prune Merged
+      </button>
+      <button class="btn btn-primary" id="btnNewWorktree">
+        <span class="icon">+</span> New Worktree
+      </button>
+    </div>
+  </header>
+
+  <nav class="app-nav">
+    <button class="nav-tab active" data-tab="worktrees">
+      Worktrees <span class="tab-count" id="countWorktrees">0</span>
+    </button>
+    <button class="nav-tab" data-tab="stashes">
+      Stash Studio <span class="tab-count" id="countStashes">0</span>
+    </button>
+    <button class="nav-tab" data-tab="ports">
+      Port Multiplexer <span class="tab-count" id="countPorts">0</span>
+    </button>
+  </nav>
+
+  <main class="app-main">
+    <!-- Worktrees Tab -->
+    <section class="tab-content active" id="tabWorktrees">
+      <div class="tab-toolbar">
+        <input type="text" class="input-search" id="worktreeSearch" placeholder="Filter branches or directories...">
+        <div class="view-toggles">
+          <button class="toggle-btn active" id="viewCardsBtn" title="Cards View">⊞</button>
+          <button class="toggle-btn" id="viewTableBtn" title="Table View">☰</button>
+        </div>
+      </div>
+
+      <div class="worktrees-grid" id="worktreesGrid">
+        <!-- Rendered via JS -->
+      </div>
+
+      <div class="worktrees-table-container hidden" id="worktreesTableContainer">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Branch</th>
+              <th>Directory</th>
+              <th>Git Status</th>
+              <th>Allocated Ports</th>
+              <th>GitHub PR</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="worktreesTableBody">
+            <!-- Rendered via JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Stashes Tab -->
+    <section class="tab-content" id="tabStashes">
+      <div class="stash-studio-layout">
+        <div class="stash-sidebar">
+          <div class="sidebar-header">
+            <input type="text" class="input-search" id="stashSearch" placeholder="Search stashes, commits, files...">
+          </div>
+          <div class="stash-list" id="stashList">
+            <!-- Stash list items -->
+          </div>
+        </div>
+        <div class="stash-main">
+          <div class="stash-detail-header" id="stashDetailHeader">
+            <div class="detail-title">
+              <span class="stash-badge" id="detailStashId">Select a stash</span>
+              <span class="stash-branch" id="detailStashBranch"></span>
+            </div>
+            <div class="detail-actions" id="detailActions" style="display: none;">
+              <button class="btn btn-secondary btn-sm" id="btnApplyStash">Apply</button>
+              <button class="btn btn-warning btn-sm" id="btnPopStash">Pop</button>
+              <button class="btn btn-danger btn-sm" id="btnDropStash">Drop</button>
+            </div>
+          </div>
+          <div class="stash-files-bar" id="stashFilesBar"></div>
+          <div class="stash-diff-container">
+            <pre class="diff-viewer" id="diffViewer"><code>Select a stash entry to view unified diff.</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ports Tab -->
+    <section class="tab-content" id="tabPorts">
+      <div class="ports-header-card">
+        <h3>Active Port Offsets Table</h3>
+        <p>WorktreeForge assigns sequential, non-conflicting port offsets into <code>.env.local</code> to prevent <code>EADDRINUSE</code> errors across parallel worktrees.</p>
+      </div>
+      <div class="ports-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Branch</th>
+              <th>Environment Variable</th>
+              <th>Base Port</th>
+              <th>Allocated Port</th>
+              <th>Socket Status</th>
+              <th>Directory</th>
+            </tr>
+          </thead>
+          <tbody id="portsTableBody">
+            <!-- Rendered via JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Create Worktree Modal -->
+  <div class="modal-backdrop" id="modalNewWorktree">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Provision New Worktree</h3>
+        <button class="modal-close" id="modalCloseBtn">&times;</button>
+      </div>
+      <form id="newWorktreeForm">
+        <div class="form-group">
+          <label for="newBranchName">Branch Name *</label>
+          <input type="text" id="newBranchName" placeholder="e.g. feature/auth-redesign" required autofocus>
+          <span class="form-help">A new Git branch will be checked out automatically.</span>
+        </div>
+        <div class="form-group">
+          <label for="newBaseRef">Base Reference (Optional)</label>
+          <input type="text" id="newBaseRef" placeholder="e.g. main, origin/main, v1.0.0">
+          <span class="form-help">Default is current repository HEAD.</span>
+        </div>
+        <div class="form-group">
+          <label for="newPortOffset">Explicit Port Offset (Optional)</label>
+          <input type="number" id="newPortOffset" placeholder="Auto-calculated (1, 2, 3...)">
+        </div>
+        <div class="form-check">
+          <input type="checkbox" id="checkConfigurePorts" checked>
+          <label for="checkConfigurePorts">Generate .env.local with multiplexed ports</label>
+        </div>
+        <div class="form-check">
+          <input type="checkbox" id="checkOpenEditor">
+          <label for="checkOpenEditor">Open in code editor after creation</label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="modalCancelBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitNewWorktree">Provision Worktree</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

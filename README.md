@@ -1,11 +1,11 @@
-# WorktreeForge
+<p align="center">
+  <img src="docs/images/logo.png?raw=true" alt="WorktreeForge Logo" width="130" style="border-radius: 24px;" />
+</p>
+
+<h1 align="center">WorktreeForge</h1>
 
 <p align="center">
   <strong>High-speed Git worktree supervisor, interactive stash studio, and local dev server port multiplexer with merged PR auto cleanup.</strong>
-</p>
-
-<p align="center">
-  <img src="docs/images/worktreeforge_preview.png" alt="WorktreeForge Terminal & Dashboard Preview" width="850" />
 </p>
 
 <p align="center">
@@ -17,11 +17,26 @@
 
 ---
 
-## Demo
+## Live Demo & Interface
 
 <p align="center">
-  <img src="docs/images/worktreeforge_demo.gif" alt="WorktreeForge Animated Terminal and Web Demo" width="850" />
+  <img src="docs/images/worktreeforge_preview.png" alt="WorktreeForge Desktop Dashboard Preview" width="850" />
 </p>
+
+<p align="center">
+  <img src="docs/images/worktreeforge_demo.gif" alt="WorktreeForge Animated Interactive Demo" width="850" />
+</p>
+
+### Responsive & Multi-Device Ready
+
+WorktreeForge Web Studio adapts cleanly across all form factors, from multi-monitor desktop setups to tablets and mobile phones:
+
+<p align="center">
+  <img src="docs/images/worktreeforge_tablet.png" alt="WorktreeForge Tablet View" width="48%" />
+  &nbsp;
+  <img src="docs/images/worktreeforge_mobile.png" alt="WorktreeForge Mobile View" width="31%" />
+</p>
+
 
 ---
 

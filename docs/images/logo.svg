@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="squircle-clip">
+      <rect x="24" y="24" width="976" height="976" rx="220" />
+    </clipPath>
+
+    <linearGradient id="cyan-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f5ff"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <linearGradient id="cyan-core" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00f5ff"/>
+      <stop offset="50%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <linearGradient id="amber-accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+
+    <filter id="subtle-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.16" />
+    </filter>
+  </defs>
+
+  <!-- Luxury White Squircle Container -->
+  <rect x="24" y="24" width="976" height="976" rx="220" fill="#ffffff" stroke="#e2e8f0" stroke-width="6" />
+
+  <g clip-path="url(#squircle-clip)">
+    <g transform="translate(512, 512)" filter="url(#subtle-shadow)">
+
+      <!-- Hexagonal Architectural Gateway Frame -->
+      <polygon points="
+        0,-390
+        338,-195
+        338,195
+        0,390
+        -338,195
+        -338,-195
+      " fill="none" stroke="#0f172a" stroke-width="36" stroke-linejoin="round" />
+
+      <polygon points="
+        0,-355
+        307,-177
+        307,177
+        0,355
+        -307,177
+        -307,-177
+      " fill="none" stroke="#00f5ff" stroke-width="4" opacity="0.4" stroke-dasharray="16, 12" />
+
+      <!-- Single 100% Watertight Solid Base Silhouette (Zero-Leak) -->
+      <path d="
+        M 0,-140
+        L 40,-165 L 85,-200 L 165,-180 L 150,-220 L 95,-240 L 155,-290 L 235,-265 L 205,-310 L 130,-320 L 165,-365 L 90,-355 L 55,-275 L 30,-220 L 0,-150
+        L -30,-220 L -55,-275 L -90,-355 L -165,-365 L -130,-320 L -205,-310 L -235,-265 L -155,-290 L -95,-240 L -150,-220 L -165,-180 L -85,-200 L -40,-165
+        L 0,-140
+        L 65,-130 L 155,-155 L 210,-130 L 175,-80 L 95,-65
+        L 90,-10 L 70,60 L 52,105 L 35,145 L 65,195 L 125,245 L 150,300 L 90,345 L 0,365
+        L -90,345 L -150,300 L -125,245 L -65,195 L -35,145 L -52,105 L -70,60 L -90,-10
+        L -95,-65 L -175,-80 L -210,-130 L -155,-155 L -65,-130
+        Z
+      " fill="#0b0f19" />
+
+      <!-- Low-Poly Antler Facets (The Multi-Branch Worktree Metaphor) -->
+      <!-- Right Antlers (Light side) -->
+      <!-- Main Stem Base -->
+      <polygon points="0,-140 40,-175 80,-215 50,-185" fill="#334155" />
+      <polygon points="50,-185 80,-215 100,-255 65,-225" fill="#475569" />
+
+      <!-- Lower Brow Tine (Fork 1) -->
+      <polygon points="40,-175 155,-170 130,-205 80,-215" fill="#64748b" />
+      <polygon points="130,-205 165,-180 180,-190 140,-220" fill="#94a3b8" />
+      <polygon points="80,-215 140,-220 105,-245" fill="#334155" />
+
+      <!-- Mid Tine (Fork 2 - Expansion) -->
+      <polygon points="100,-255 205,-250 175,-290 90,-275" fill="#475569" />
+      <polygon points="205,-250 235,-265 220,-295 175,-290" fill="#64748b" />
+
+      <!-- Upper Crown Tine (Fork 3 - High-Speed Branching) -->
+      <polygon points="90,-275 135,-315 95,-355 60,-295" fill="#334155" />
+      <polygon points="135,-315 175,-305 165,-350 95,-355" fill="#475569" />
+      <polygon points="95,-355 135,-370 75,-365" fill="#64748b" />
+      <polygon points="60,-295 95,-355 40,-310" fill="#1e293b" />
+      <polygon points="40,-310 0,-140 60,-295" fill="#0f172a" />
+
+      <!-- Left Antlers (Shadow side) -->
+      <!-- Main Stem Base -->
+      <polygon points="0,-140 -40,-175 -80,-215 -50,-185" fill="#1e293b" />
+      <polygon points="-50,-185 -80,-215 -100,-255 -65,-225" fill="#0f172a" />
+
+      <!-- Lower Brow Tine (Fork 1) -->
+      <polygon points="-40,-175 -155,-170 -130,-205 -80,-215" fill="#334155" />
+      <polygon points="-130,-205 -165,-180 -180,-190 -140,-220" fill="#1e293b" />
+      <polygon points="-80,-215 -140,-220 -105,-245" fill="#0f172a" />
+
+      <!-- Mid Tine (Fork 2) -->
+      <polygon points="-100,-255 -205,-250 -175,-290 -90,-275" fill="#1e293b" />
+      <polygon points="-205,-250 -235,-265 -220,-295 -175,-290" fill="#334155" />
+
+      <!-- Upper Crown Tine (Fork 3) -->
+      <polygon points="-90,-275 -135,-315 -95,-355 -60,-295" fill="#1e293b" />
+      <polygon points="-135,-315 -175,-305 -165,-350 -95,-355" fill="#0f172a" />
+      <polygon points="-95,-355 -135,-370 -75,-365" fill="#334155" />
+      <polygon points="-60,-295 -95,-355 -40,-310" fill="#0f172a" />
+      <polygon points="-40,-310 0,-140 -60,-295" fill="#0b0f19" />
+
+      <!-- Antler Cyan Node Accents (Branch Endpoints) -->
+      <circle cx="165" cy="-180" r="4.5" fill="#00f5ff" />
+      <circle cx="225" cy="-275" r="4.5" fill="#00f5ff" />
+      <circle cx="115" cy="-360" r="5" fill="#00f5ff" />
+      <circle cx="-165" cy="-180" r="4.5" fill="#00f5ff" />
+      <circle cx="-225" cy="-275" r="4.5" fill="#00f5ff" />
+      <circle cx="-115" cy="-360" r="5" fill="#00f5ff" />
+
+      <!-- Origami Ears -->
+      <!-- Right Ear -->
+      <polygon points="65,-120 160,-150 205,-130 115,-85" fill="#475569" />
+      <polygon points="115,-85 205,-130 170,-80 95,-65" fill="#334155" />
+      <polygon points="95,-110 170,-135 125,-90" fill="#1e293b" />
+
+      <!-- Left Ear -->
+      <polygon points="-65,-120 -160,-150 -205,-130 -115,-85" fill="#1e293b" />
+      <polygon points="-115,-85 -205,-130 -170,-80 -95,-65" fill="#0f172a" />
+      <polygon points="-95,-110 -170,-135 -125,-90" fill="#0b0f19" />
+
+      <!-- Forehead & Central Crown Shield -->
+      <polygon points="0,-140 50,-110 0,-60 -50,-110" fill="url(#cyan-glow)" opacity="0.95" />
+      <polygon points="0,-60 50,-110 70,-55 0,0" fill="#475569" />
+      <polygon points="0,-60 -50,-110 -70,-55 0,0" fill="#1e293b" />
+
+      <!-- Brow Armor Plates -->
+      <polygon points="50,-110 95,-65 70,-55" fill="#334155" />
+      <polygon points="-50,-110 -95,-65 -70,-55" fill="#0f172a" />
+
+      <!-- Temporal / Eye Sockets -->
+      <polygon points="70,-55 95,-65 100,-15 62,-10" fill="#334155" />
+      <polygon points="-70,-55 -95,-65 -100,-15 -62,-10" fill="#1e293b" />
+
+      <!-- Focused Predator Optics (Almond-Shaped Electric Cyan Eyes) -->
+      <!-- Right Eye Outer Plate -->
+      <polygon points="46,-26 80,-22 72,-5 42,-10" fill="#0f172a" stroke="#00f5ff" stroke-width="1.5" stroke-linejoin="round" />
+      <!-- Right Eye Iris -->
+      <polygon points="50,-22 76,-19 69,-8 47,-11" fill="url(#cyan-core)" />
+      <!-- Right Eye Highlight -->
+      <polygon points="62,-20 72,-19 68,-14" fill="#ffffff" />
+
+      <!-- Left Eye Outer Plate -->
+      <polygon points="-46,-26 -80,-22 -72,-5 -42,-10" fill="#0b0f19" stroke="#00f5ff" stroke-width="1.5" stroke-linejoin="round" />
+      <!-- Left Eye Iris -->
+      <polygon points="-50,-22 -76,-19 -69,-8 -47,-11" fill="url(#cyan-core)" />
+      <!-- Left Eye Highlight -->
+      <polygon points="-62,-20 -72,-19 -68,-14" fill="#ffffff" />
+
+      <!-- Nasal Bridge & Cheeks -->
+      <polygon points="0,0 32,15 25,80 0,95" fill="#475569" />
+      <polygon points="0,0 -32,15 -25,80 0,95" fill="#1e293b" />
+
+      <!-- Cheek Plates -->
+      <polygon points="0,0 32,15 62,-10" fill="#64748b" />
+      <polygon points="0,0 -32,15 -62,-10" fill="#334155" />
+
+      <polygon points="32,15 72,35 58,90 25,80" fill="#334155" />
+      <polygon points="-32,15 -72,35 -58,90 -25,80" fill="#0f172a" />
+
+      <!-- Outer Jaw Mandibles -->
+      <polygon points="62,-10 100,-15 88,45 72,35" fill="#1e293b" />
+      <polygon points="-62,-10 -100,-15 -88,45 -72,35" fill="#0b0f19" />
+
+      <polygon points="72,35 88,45 75,105 58,90" fill="#0f172a" />
+      <polygon points="-72,35 -88,45 -75,105 -58,90" fill="#0b0f19" />
+
+      <!-- Refined Muzzle & Titanium Chin -->
+      <!-- Central Nose Diamond -->
+      <polygon points="0,95 20,115 0,128 -20,115" fill="#0b0f19" stroke="#334155" stroke-width="1.5" />
+      <polygon points="0,95 20,115 0,118" fill="#1e293b" />
+
+      <!-- Lateral Whisker Plates -->
+      <polygon points="25,80 0,95 20,115 36,135 50,100" fill="#475569" />
+      <polygon points="-25,80 0,95 -20,115 -36,135 -50,100" fill="#1e293b" />
+
+      <polygon points="0,128 20,115 36,135 20,150 0,158" fill="#334155" />
+      <polygon points="0,128 -20,115 -36,135 -20,150 0,158" fill="#0f172a" />
+
+      <!-- Chin Tip -->
+      <polygon points="0,158 20,150 0,168 -20,150" fill="#1e293b" />
+
+      <!-- Continuous Tech Neck Plates (Seamless Connection - No Gaps) -->
+      <!-- Central Throat -->
+      <polygon points="0,168 35,185 0,225 -35,185" fill="#334155" />
+      <polygon points="0,168 35,185 0,225" fill="#475569" />
+
+      <!-- Neck Lateral Wings -->
+      <polygon points="20,150 36,135 75,105 85,165 35,185" fill="#1e293b" />
+      <polygon points="-20,150 -36,135 -75,105 -85,165 -35,185" fill="#0f172a" />
+
+      <polygon points="35,185 85,165 110,210 55,230 0,225" fill="#334155" />
+      <polygon points="-35,185 -85,165 -110,210 -55,230 0,225" fill="#0f172a" />
+
+      <!-- Glowing Forge Core Channel -->
+      <polygon points="0,225 25,250 0,310 -25,250" fill="url(#cyan-glow)" />
+
+      <!-- Lower Collar Plates -->
+      <polygon points="0,225 55,230 110,210 135,265 75,280 25,250" fill="#475569" />
+      <polygon points="0,225 -55,230 -110,210 -135,265 -75,280 -25,250" fill="#1e293b" />
+
+      <!-- Outer Shoulder Armor -->
+      <polygon points="110,210 145,245 155,295 135,265" fill="#334155" />
+      <polygon points="-110,210 -145,245 -155,295 -135,265" fill="#0f172a" />
+
+      <!-- Pectoral Base Plates -->
+      <polygon points="25,250 75,280 115,320 45,345 0,310" fill="#334155" />
+      <polygon points="-25,250 -75,280 -115,320 -45,345 0,310" fill="#0f172a" />
+
+      <polygon points="0,310 45,345 0,370 -45,345" fill="#475569" />
+      <polygon points="0,310 -45,345 0,370" fill="#1e293b" />
+
+      <!-- Center Chest Anvil Emblem Accent -->
+      <polygon points="0,265 14,282 0,300 -14,282" fill="#ffffff" opacity="0.95" />
+
+    </g>
+  </g>
+</svg>
